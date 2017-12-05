@@ -147,7 +147,7 @@ function validate (requestContext, callback) {
     callback(valid, requestContext)
     return
   }
-  callback(null, requestContext)
+  setImmediate(callback, null, requestContext)
 }
 
 function handleUserHandler (requestContext, callback) {
@@ -164,7 +164,17 @@ function handleUserHandler (requestContext, callback) {
       reply['isError'] = true
       reply.send(err)
     })
+    return
   }
+  callback(null, requestContext)
+}
+
+function runOnSendHooks (requestContext, callback) {
+  console.log('KKKKKK', this)
+}
+
+function sendOutput (requestContext, callback) {
+  console.log('JJJ')
 }
 
 function defaultErrorHandler (err, requestContext) {
@@ -337,10 +347,10 @@ function build (options) {
 
   function onResFinished (err) {
     if (!this._requestContext) return
-    _onResFinished(this._requestContext, err)
+    _onResFinished(err, this._requestContext)
   }
 
-  function _onResFinished (requestContext, err) {
+  function _onResFinished (err, requestContext) {
     requestContext.res.removeListener('error', onResFinished)
     onResponseCallback(err, requestContext.res)
   }
@@ -561,24 +571,44 @@ function build (options) {
       )
 
       const onRequest = opts.onRequest || _fastify._hooks.onRequest
+      const onSend = opts.onSend || _fastify._hooks.onSend
+
+      const hasOnSendHooks = onSend.length > 0
+
+      const Request = opts.Request || _fastify._Request
+      const ReplyClass = opts.Reply || _fastify._Reply
 
       const functions = []
       for (let i = 0; i < onRequest.length; i++) {
         functions.push(onRequestHandling.bind({ onRequest: onRequest[i] }))
       }
       if (opts.method === 'GET' || opts.method === 'HEAD') {
-        functions.push(parsingGet.bind({ Request: opts.Request || _fastify._Request }))
+        functions.push(parsingGet.bind({ Request: Request }))
       } else if (opts.method === 'POST' || opts.method === 'PUT' || opts.method === 'PATCH') {
-        functions.push(parsingPost.bind({ Request: opts.Request || _fastify._Request, contentTypeParser: contentTypeParser }))
+        functions.push(parsingPost.bind({ Request: Request, contentTypeParser: contentTypeParser }))
       } else if (opts.method === 'OPTIONS' || opts.method === 'DELETE') {
-        functions.push(parsingDelete.bind({ Request: opts.Request || _fastify._Request, contentTypeParser: contentTypeParser }))
+        functions.push(parsingDelete.bind({ Request: Request, contentTypeParser: contentTypeParser }))
       }
-      functions.push(validate.bind({ Reply: opts.Reply || _fastify._Reply, compiledSchema: compiledSchema }))
+
+      const _ReplyClass = hasOnSendHooks ? Reply.buildReply(ReplyClass) : ReplyClass
+      _ReplyClass.hasOnSendHooks = hasOnSendHooks
+      if (hasOnSendHooks) {
+        functions.push(validate.bind({ Reply: _ReplyClass, compiledSchema: compiledSchema }))
+      } else {
+        functions.push(validate.bind({ Reply: _ReplyClass, compiledSchema: compiledSchema }))
+      }
       // TODO: prehandler
       // TODO: beforeHandler
       functions.push(handleUserHandler.bind({ userHandler: opts.handler.bind(_fastify) }))
-      // TODO: onSend
-      functions.push(_onResFinished)
+
+      console.log('JJJ', hasOnSendHooks)
+      if (hasOnSendHooks) {
+        functions.push(runOnSendHooks.bind({ onSend: onSend }))
+        functions.push(sendOutput.bind({}))
+      }
+
+      console.log(functions)
+      functions.push(_onResFinished.bind({}, null))
 
       const steps = ffs(functions, errorHandler ? errorHandler.bind(context) : defaultErrorHandler.bind({ compiledSchema: compiledSchema, Reply: Reply }))
       context.steps = steps
