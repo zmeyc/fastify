@@ -1739,6 +1739,74 @@ test('If the content type has been set inside an hook it should not be changed',
   })
 })
 
+test('Cannot call next multiple times', t => {
+  t.plan(3)
+  const fastify = Fastify()
+
+  fastify.addHook('preHandler', (req, reply, next) => {
+    setTimeout(next, 10)
+    setTimeout(next, 10)
+  })
+
+  fastify.addHook('preHandler', (req, reply, next) => {
+    setTimeout(() => {
+      req.test = true
+      next()
+    }, 50)
+  })
+
+  fastify.addHook('preHandler', (req, reply, next) => {
+    setTimeout(next, 10)
+  })
+
+  fastify.get('/', (request, reply) => {
+    t.ok(request.test)
+    reply.send({ hello: 'world' })
+  })
+
+  fastify.inject({
+    url: '/',
+    method: 'GET'
+  }, (err, res) => {
+    t.error(err)
+    t.is(res.statusCode, 200)
+  })
+})
+
+test('Cannot call next multiple times (onSend)', t => {
+  t.plan(3)
+  const fastify = Fastify()
+
+  fastify.addHook('onSend', (req, reply, payload, next) => {
+    setTimeout(next, 10)
+    setTimeout(next, 10)
+  })
+
+  fastify.addHook('onSend', (req, reply, payload, next) => {
+    setTimeout(() => {
+      req.test = true
+      next()
+    }, 50)
+  })
+
+  fastify.addHook('onSend', (req, reply, payload, next) => {
+    t.ok(req.test)
+    setTimeout(next, 10)
+  })
+
+  fastify.get('/', (request, reply) => {
+    reply.send({ hello: 'world' })
+  })
+
+  fastify.inject({
+    url: '/',
+    method: 'GET'
+  }, (err, res) => {
+    t.error(err)
+    t.is(res.statusCode, 200)
+  })
+})
+
 if (semver.gt(process.versions.node, '8.0.0')) {
   require('./hooks-async')(t)
 } else {

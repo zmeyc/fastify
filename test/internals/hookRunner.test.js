@@ -4,6 +4,9 @@ const t = require('tap')
 const test = t.test
 const runHooks = require('../../lib/hookRunner').hookRunner
 const runOnSendHooks = require('../../lib/hookRunner').onSendHookRunner
+const internals = require('../../lib/hookRunner')[Symbol.for('internals')]
+const once = internals.once
+const onceSend = internals.onceSend
 
 test('hookRunner - Basic', t => {
   t.plan(8)
@@ -418,4 +421,55 @@ test('onSendHookRunner - Be able to exit before its natural end', t => {
   function done () {
     t.fail('this should not be called')
   }
+})
+
+test('once', t => {
+  t.plan(1)
+
+  function next () {
+    t.pass('Called just once')
+  }
+
+  const _next = once(next)
+  _next()
+  _next()
+})
+
+test('onceSend', t => {
+  t.plan(1)
+
+  function next () {
+    t.pass('Called just once')
+  }
+
+  const _next = onceSend(next)
+  _next()
+  _next()
+})
+
+test('once with value', t => {
+  t.plan(2)
+
+  function next (err) {
+    t.ok(err)
+    t.pass('Called just once')
+  }
+
+  const _next = once(next)
+  _next(true)
+  _next(true)
+})
+
+test('onceSend with value', t => {
+  t.plan(3)
+
+  function next (err, payload) {
+    t.ok(err)
+    t.ok(payload)
+    t.pass('Called just once')
+  }
+
+  const _next = onceSend(next)
+  _next(true, true)
+  _next(true, true)
 })

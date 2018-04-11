@@ -351,6 +351,86 @@ function asyncHookTest (t) {
       t.is(res.statusCode, 200)
     })
   })
+
+  test('Cannot call next multiple times (async)', t => {
+    t.plan(3)
+    const fastify = Fastify()
+
+    fastify.addHook('preHandler', async (req, reply, next) => {
+      setTimeout(next, 10)
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 10)
+      })
+    })
+
+    fastify.addHook('preHandler', async (req, reply) => {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          req.test = true
+          resolve()
+        }, 50)
+      })
+    })
+
+    fastify.addHook('preHandler', async (req, reply) => {
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 10)
+      })
+    })
+
+    fastify.get('/', (request, reply) => {
+      t.ok(request.test)
+      reply.send({ hello: 'world' })
+    })
+
+    fastify.inject({
+      url: '/',
+      method: 'GET'
+    }, (err, res) => {
+      t.error(err)
+      t.is(res.statusCode, 200)
+    })
+  })
+
+  test('Cannot call next multiple times (async onSend)', t => {
+    t.plan(3)
+    const fastify = Fastify()
+
+    fastify.addHook('onSend', async (req, reply, payload, next) => {
+      setTimeout(next, 10)
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 10)
+      })
+    })
+
+    fastify.addHook('onSend', async (req, reply, payload, next) => {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          req.test = true
+          resolve()
+        }, 50)
+      })
+    })
+
+    fastify.addHook('onSend', async (req, reply, payload, next) => {
+      t.ok(req.test)
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 10)
+      })
+    })
+
+    fastify.get('/', (request, reply) => {
+      reply.send({ hello: 'world' })
+    })
+
+    fastify.inject({
+      url: '/',
+      method: 'GET'
+    }, (err, res) => {
+      t.error(err)
+      t.is(res.statusCode, 200)
+    })
+  })
 }
 
 module.exports = asyncHookTest
