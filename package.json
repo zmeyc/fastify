@@ -106,7 +106,7 @@
     "form-data": "^2.5.0",
     "frameguard": "^3.0.0",
     "h2url": "^0.1.2",
-    "helmet": "^3.20.0",
+    "helmet": "^3.21.1",
     "hide-powered-by": "^1.0.0",
     "hsts": "^2.1.0",
     "http-errors": "^1.7.1",
