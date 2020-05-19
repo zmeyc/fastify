@@ -2,12 +2,10 @@
  * Most type annotations in this file are not strictly necessary but are
  * included for this example.
  *
- * To run this example execute the following commands to install typescript,
- * transpile the code, and start the server:
+ * To run this example, execute the following command to transpile the code
+ * with typescript and start the server:
  *
- * npm i -g typescript
- * tsc examples/typescript-server.ts --target es6 --module commonjs
- * node examples/typescript-server.js
+ * npx ts-node examples/typescript-server.ts
  */
 
 import fastify, { FastifyInstance, RouteShorthandOptions } from '../fastify';
